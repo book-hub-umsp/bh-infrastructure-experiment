@@ -1,70 +1,55 @@
-job "book-hub-backend" {
-    ui {
-        description = "A job for `backend` services of **[BockHub project](https://github.com/book-hub-umsp)**"
-        link {
-            label = "GitHub"
-            url   = "https://github.com/book-hub-umsp/book-hub-api"
-        }
-    }
+variable "ROOT_PASS" {
+  type        = string
+  description = "Password of root use in db."
+}
+variable "main-api-version" {
+    type = string
+    default = "latest"
+    description = "Version of main api service"
+}
 
+job "bockhub-backend" {
     datacenters = ["hc1"]
-    region = "global"
-
+    region = "ru-ru"
     type = "service"
-    namespace = "default"
+    
     group "backend" {
         count = 1
 
         network {
-            port "http-main" {
+            port "http" {
                 static = "5001"
                 to = "8080"
             }
         }
         service {
-            name = "bh-back-main-api-ru-bookhub"
-            provider = "consul"
-            tags = [
-                "traefik.enable=true",
-				"traefik.http.routers.bh-back-main-api-ru-bookhub.entrypoints=websecure", 
-  				"traefik.http.routers.bh-back-main-api-ru-bookhub.rule=Host(`bh-back-main-api-ru-bookhub.service.consul`)",
-                "traefik.http.routers.bh-back-main-api-ru-bookhub.tls=true",
-                "traefik.http.routers.bh-back-main-api-ru-bookhub.tls.certresolver=le"
-            ]
-            port = "http-main"
+            name = "bh-back-main-api"
+            provider = "nomad"
+            port = "http"
         }
         task "main-api" {
             driver = "docker"
 
             config {
-                force_pull=true
-                image = "ghcr.io/book-hub-umsp/book-hub-api:${MAIN_API_VERSION}"
-                ports = ["http-main"]
+                image = "ghcr.io/book-hub-umsp/book-hub-api:${var.main-api-version}"
+                ports = ["http"]
+                # volumes = [
+				# 	# "local/appsettings.json:/app/appsettings.json",
+                # ]
             }
             template {
                 data = <<EOF
-{{ with nomadVar "book-hub/secret/db" }}
-ConnectionStrings__DefaultConnection="Host={{ .DB_ADDR }};Port={{ .DB_PORT }};Database=books_hub;Username={{ .DB_USER }};Password={{ .DB_PASS }};"
+        		{{ range nomadService "bh-db-postgresql" }}
+ConnectionStrings__DefaultConnection="Host={{ .Address }};Port={{ .Port }};Database=books_hub;Username=root;Password=${var.ROOT_PASS};"
 TestConfig__Content="Nomad settings"
-{{ end }}
+				{{ end }}
                 EOF
-                change_mode = "noop"
                 destination = "local/secret.env"
                 env = true
             }
-            template {
-                data = <<EOF
-{{ with nomadVar "book-hub/meta/version" }}
-MAIN_API_VERSION="{{ .MAIN_API_VERSION }}"
-{{ end }}
-                EOF
-                change_mode = "noop"
-                destination = "local/version.env"
-                env = true
-            }
             resources {
-		        cpu = 500
-			    memory = 512
+		        cpu = 2000
+			    memory = 1024
 		    }
         }
         restart {
