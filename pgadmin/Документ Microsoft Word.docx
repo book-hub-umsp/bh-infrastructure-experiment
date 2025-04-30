@@ -1,0 +1,14 @@
+{
+    "Servers": {
+      "1": {
+        "Name": "Drone DB",
+        "Group": "Servers",
+        "Host": "bh-db",
+        "Port": 5432,
+        "MaintenanceDB": "bookhubdb",
+        "Username": "bookhub",
+        "SSLMode": "prefer"
+      }
+    }
+  }
+  
