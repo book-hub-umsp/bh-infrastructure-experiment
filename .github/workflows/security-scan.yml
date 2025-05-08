@@ -1,0 +1,67 @@
+name: GraphQL Code Scan
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Analyze structure
+        run: |
+          echo "Содержимое репозитория:"
+          ls -laR
+          echo "Найденные package.json:"
+          find . -name package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: |
+          # Если package.json в корне:
+          if [ -f "package.json" ]; then
+            npm install
+          # Или укажите правильный путь:
+          elif [ -f "frontend/package.json" ]; then
+            cd frontend
+            npm install
+          else
+            echo "ERROR: package.json не найден!"
+            exit 1
+          fi
+
+      - name: Run GraphQL scan
+        run: |
+          # Аналогичная логика для скрипта сканирования
+          if [ -f "package.json" ]; then
+            npm run graphql-scan
+          elif [ -f "frontend/package.json" ]; then
+            cd frontend
+            npm run graphql-scan
+          fi
+          echo "Scan results" > scan-results.txt
+
+      - name: Add PR comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.existsSync('scan-results.txt') 
+              ? fs.readFileSync('scan-results.txt', 'utf8')
+              : 'Scan results not available';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### GraphQL Code Scan Results:\n\n${output}`
+            })

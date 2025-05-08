@@ -1,0 +1,22 @@
+# security-hardening.yml (новый workflow)
+name: Security Hardening
+
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Еженедельно
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for hardcoded secrets
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+          
+      - name: Audit permissions
+        run: |
+          gh api repos/${{ github.repository }}/actions/permissions --jq '.enabled'
+          gh api repos/${{ github.repository }}/actions/permissions/access --jq '.access_level'

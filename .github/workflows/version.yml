@@ -1,0 +1,34 @@
+
+
+name: Get SemVer
+
+on:
+  workflow_call:
+
+
+jobs:
+  Create_Git_Tag:
+    permissions:
+        contents: write
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged
+    outputs:
+      tag-version: ${{ steps.get_tag.outputs.version }}
+    steps:    
+    - name: Create Tag
+      id: run_tag
+      uses: K-Phoen/semver-release-action@master
+      with:
+        release_branch: master
+        release_strategy: tag
+        tag_format: "v%major%.%minor%.%patch%"
+      env:
+        GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        
+    - name: Print tag from Create_Git_Tag
+      run: echo ${{ join(steps.run_tag.outputs.*, '\n') }}
+    
+    - name: Save tag
+      id: get_tag
+      run: echo "version=$(echo ${{ join(steps.run_tag.outputs.*, '\n') }})" >> "$GITHUB_OUTPUT"
+      

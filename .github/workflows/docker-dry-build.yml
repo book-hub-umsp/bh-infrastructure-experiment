@@ -1,0 +1,46 @@
+name: Docker Dry Build
+
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Navigate to project directory
+        run: cd bh-infrastructure
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Dry build Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: . #your-image-name:latest
+          tags: :latest
+          file: docker/Dockerfile
+
+      - name: Add PR comment with build results
+        run: echo "Build successful" > build-results.txt
+        if: ${{ always() }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const output = require('fs').readFileSync('build-results.txt', 'utf8');
+            const prNumber = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Docker Dry Build Results:\n\n${output}`
+            });
