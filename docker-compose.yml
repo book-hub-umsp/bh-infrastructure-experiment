@@ -139,23 +139,30 @@ services:
       context: ../bh-infrastructure-vault-base-setup/pmmt
       dockerfile: docker/Dockerfile
     container_name: migration-tool
-    command:
-      [
-        "python", "main.py",
-        "--name", "${DB_NAME}",
-        "--type", "${DB_TYPE}",
-        "--from", "${DB_FROM}",
-        "--to", "${DB_TO}"
-      ]
+    command: ["python", "/app/main.py", "--name", "bookhubdb", "--type", "postgresql", "--from", "none", "--to", "v1"]
     environment:
-      DB_DROP: ${DB_DROP}
-      DB_MOCK1: ${DB_MOCK1}
-      DB_MOCK2: ${DB_MOCK2}
+      DB_NAME: "bookhubdb"
+      DB_TYPE: "postgresql"
+      DB_FROM: "none"
+      DB_TO: "v1"
+
     networks:
       - bh-network
     depends_on:
       - bh-db
       - vault
+  graphql-scan:
+    build:
+      context: .
+    container_name: graphql-scan
+    command: ["node", "scripts/scan.js"]
+    environment:
+      GRAPHQL_ENDPOINT: http://bh-backend:4000/graphql
+    depends_on:
+      - bh-backend
+    networks:
+      - bh-network
+
 
 volumes:
   mongo_data:
